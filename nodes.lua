@@ -1281,7 +1281,6 @@ if minetest.get_modpath("abriglass") then
 end
 
 --default
-if not mb_mod then
 local default={
   "stone",
 	"stone_block",
@@ -1338,6 +1337,7 @@ for _, subname in pairs(default) do
     end
 
     bloc4builder.register_b4b("moreblocks", subname, fields, nodename)
+if not mb_mod then
     bloc4builder.register_moreblocks("moreblocks", subname, fields, nodename)
     minetest.register_alias_force("stairs:stair_" .. subname, "moreblocks:stair_" .. subname)
     minetest.register_alias_force("stairs:stair_outer_" .. subname, "moreblocks:stair_" .. subname .. "_outer")
