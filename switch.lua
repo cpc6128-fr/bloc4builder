@@ -27,10 +27,11 @@ bloc4builder.switch_on=function(pos,swap,switch)
   if swap~=nil then
     minetest.swap_node(pos, {name=swap,param2=node.param2})
   end
---TODO find node in area
-  local node_pos=minetest.find_node_near(pos, 2, {"group:switch"})
+--find node in area
+  local node_pos=minetest.find_nodes_in_area({x=pos.x-2,y=pos.y-2,z=pos.z-2},{x=pos.x+2,y=pos.y+2,z=pos.z+2}, {"group:switch"})
   if node_pos then
-    local node_content=minetest.get_node(node_pos)
+for nb_node=1,#node_pos do
+    local node_content=minetest.get_node(node_pos[nb_node])
     local nname=node_content.name
     local tmp_group=minetest.get_item_group(nname, "switch")
     local protect,protect_lvl=0,1
@@ -54,9 +55,10 @@ bloc4builder.switch_on=function(pos,swap,switch)
     if  protect_lvl==switch_lvl and switch_lock>=protect then
       if string.find(nname,"_on")==nil then
         nname=nname.."_on"
-        minetest.set_node(node_pos, {name=nname,param2=node_content.param2})
+        minetest.set_node(node_pos[nb_node], {name=nname,param2=node_content.param2})
       end
     end
+end
   end       
 end
 --
@@ -66,9 +68,10 @@ bloc4builder.switch_off=function(pos,swap,switch)
   if swap~=nil then
     minetest.swap_node(pos, {name=swap,param2=node.param2})
   end
-  local node_pos=minetest.find_node_near(pos, 2, {"group:switch"})
+local node_pos=minetest.find_nodes_in_area({x=pos.x-2,y=pos.y-2,z=pos.z-2},{x=pos.x+2,y=pos.y+2,z=pos.z+2}, {"group:switch"})
   if node_pos then
-    local node_content=minetest.get_node(node_pos)
+for nb_node=1,#node_pos do
+    local node_content=minetest.get_node(node_pos[nb_node])
     local nname=node_content.name
     local tmp_group=minetest.get_item_group(nname, "switch")
     local protect,protect_lvl=0,1
@@ -92,9 +95,10 @@ bloc4builder.switch_off=function(pos,swap,switch)
     if  protect_lvl ==switch_lvl and switch_lock>=protect then
       if string.find(nname,"_on")~=nil then
         nname=string.gsub(nname,"_on","")
-        minetest.set_node(node_pos, {name=nname,param2=node_content.param2})
+        minetest.set_node(node_pos[nb_node], {name=nname,param2=node_content.param2})
       end
     end
+end
   end      
 end
 
@@ -212,7 +216,7 @@ minetest.register_node("bloc4builder:passerelle", {
 minetest.register_node("bloc4builder:hub", {
 	description = "hub embarquement",
   drawtype = "nodebox",
-	tiles ={"hub.png"},
+	tiles ={"hub.png","asphalt.png","hub_side.png"},
   paramtype = "light",
   paramtype2 = "facedir",
 	is_ground_content = false,
@@ -250,7 +254,7 @@ minetest.register_node("bloc4builder:hub", {
 minetest.register_node("bloc4builder:hub_on", {
 	description = "hub embarquement",
   drawtype = "nodebox",
-	tiles ={"hub_active.png"},
+	tiles ={"hub_active.png","asphalt.png","hub_side.png"},
   paramtype = "light",
   paramtype2 = "facedir",
   on_construct=function(pos)
@@ -912,7 +916,7 @@ node_box = {
     bloc4builder.switch_off(pos,"bloc4builder:switch2_off",2)
 	end,
   on_destruct = function (pos)
-    bloc4builder.switch_off(pos,nil,"bloc4builder:switch2_off",2)
+    bloc4builder.switch_off(pos,"bloc4builder:switch2_off",2)
 	end,
   on_timer = function(pos,elapsed)
     minetest.get_node_timer(pos):stop()
