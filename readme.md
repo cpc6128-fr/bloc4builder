@@ -6,4 +6,7 @@ Thanks all
 Compatible moreblocks
 
 
-some texture (wall, floor) : RPGMAKER
+texture :
+wall, floor : RPGMAKER
+streets_support : mod STREETS
+cammouflage : mod MOBS_WAR
