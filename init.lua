@@ -151,5 +151,18 @@ minetest.register_craft({
     }
 })
 
+if not minetest.get_modpath("spacengine") then
+minetest.register_craftitem( ":spacengine:tool", {
+	description = "tools spacengine",
+	inventory_image = "clef.png",
+})
 
-
+minetest.register_craft({
+    output = "spacengine:tool",
+    recipe = {
+        {"default:mese_crystal", "", ""},
+        {"", "default:steel_ingot", ""},
+        {"", "", "default:steel_ingot"}
+    }
+})
+end
