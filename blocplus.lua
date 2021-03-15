@@ -9,13 +9,15 @@ modif 202007 by CPC6128
 --]]
 
 local descriptions = {
-	["micro"] = "Microblock",
-	["slab"] = "Slab",
-	["slope"] = "Slope",
-	["panel"] = "Panel",
-	["stair"] = "Stairs",
-  ["box"] = "Fuselage",
-  ["mesh"] = "Fuselage",
+	["micro"] = {"Microblock","micro"},
+	["slab"] = {"Slab","slab"},
+	["slope"] = {"Slope","slope"},
+	["panel"] = {"Panel","panel"},
+	["stair"] = {"Stairs","stair"},
+  ["box1"] = {"Fuselage","box"},
+  ["box2"] = {"Fuselage","box"},
+  ["mesh1"] = {"Fuselage","mesh"},
+  ["mesh2"] = {"Fuselage","mesh"}
 }
 
 local function prepare_groups(groups)
@@ -34,7 +36,7 @@ local function prepare_groups(groups)
 end
 
 bloc4builder.register_single = function(category, alternate, info, modname, subname, fields , recipeitem)
-	local desc_base = descriptions[category]
+	local desc_base = descriptions[category][1]
 	local def = {}
 
 	-- copy fields to def
@@ -42,7 +44,7 @@ bloc4builder.register_single = function(category, alternate, info, modname, subn
 		def[k] = v
 	end
 
-  if category=="slope" or category=="mesh" then
+  if category=="slope" or category=="mesh1" or category=="mesh2" then
     def.drawtype = "mesh"
     def.mesh = info.mesh
     def.collision_box=info.collision_box
@@ -77,10 +79,10 @@ bloc4builder.register_single = function(category, alternate, info, modname, subn
 		end
 
 	if fields.drop and not (type(fields.drop) == "table") then
-		def.drop = modname.. ":" .. category .. "_" .. fields.drop .. alternate
+		def.drop = modname.. ":" .. descriptions[category][2] .. "_" .. fields.drop .. alternate
 	end
 
-	minetest.register_node(":" ..modname.. ":" .. category .. "_" .. subname .. alternate, def)
+	minetest.register_node(":" ..modname.. ":" .. descriptions[category][2] .. "_" .. subname .. alternate, def)
 
   --stairsplus.register_recipes(category, alternate, modname, subname, recipeitem)
 
@@ -141,22 +143,44 @@ local function register_micro(modname, subname, fields , nodename)
 
 end
 
--- box
-local function register_box(modname, subname, fields , nodename)
-  local defs=bloc4builder.defs["box"]
+-- box1
+local function register_box1(modname, subname, fields , nodename)
+  local defs=bloc4builder.defs["box1"]
 	for alternate, def in pairs(defs) do
-		bloc4builder.register_single("box", alternate, def, modname, subname, fields , nodename)
+		bloc4builder.register_single("box1", alternate, def, modname, subname, fields , nodename)
 	end
 
 	blocsaw.known_nodes[nodename] = {modname, subname}
 
 end
 
--- mesh
-local function register_mesh(modname, subname, fields , nodename)
-  local defs=bloc4builder.defs["mesh"]
+-- box2
+local function register_box2(modname, subname, fields , nodename)
+  local defs=bloc4builder.defs["box2"]
 	for alternate, def in pairs(defs) do
-		bloc4builder.register_single("mesh", alternate, def, modname, subname, fields , nodename)
+		bloc4builder.register_single("box2", alternate, def, modname, subname, fields , nodename)
+	end
+
+	blocsaw.known_nodes[nodename] = {modname, subname}
+
+end
+
+-- mesh1
+local function register_mesh1(modname, subname, fields , nodename)
+  local defs=bloc4builder.defs["mesh1"]
+	for alternate, def in pairs(defs) do
+		bloc4builder.register_single("mesh1", alternate, def, modname, subname, fields , nodename)
+	end
+
+	blocsaw.known_nodes[nodename] = {modname, subname}
+
+end
+
+-- mesh2
+local function register_mesh2(modname, subname, fields , nodename)
+  local defs=bloc4builder.defs["mesh2"]
+	for alternate, def in pairs(defs) do
+		bloc4builder.register_single("mesh2", alternate, def, modname, subname, fields , nodename)
 	end
 
 	blocsaw.known_nodes[nodename] = {modname, subname}
@@ -173,12 +197,16 @@ function bloc4builder.register_moreblocks(modname, subname, fields, nodename)
 end
 
 --bloc4builder
-function bloc4builder.register_b4b(modname, subname, fields, nodename)
-	register_box(modname, subname, fields , nodename)
-  register_mesh(modname, subname, fields , nodename)
+function bloc4builder.register_b4b_lite(modname, subname, fields, nodename)
+	register_box1(modname, subname, fields , nodename)
+  register_mesh1(modname, subname, fields , nodename)
 end
 
-
+--bloc4builder
+function bloc4builder.register_b4b_full(modname, subname, fields, nodename)
+	register_box2(modname, subname, fields , nodename)
+  register_mesh2(modname, subname, fields , nodename)
+end
 
 
 

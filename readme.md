@@ -10,3 +10,4 @@ texture :
 wall, floor : RPGMAKER
 streets_support : mod STREETS
 cammouflage : mod MOBS_WAR
+other : CPC6128 (me)

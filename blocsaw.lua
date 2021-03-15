@@ -456,7 +456,7 @@ minetest.register_node("bloc4builder:circular_saw",  {
 		local owned_by = owner
 
 		if owner ~= "" then
-			owned_by = (" (%s)"):format("owned by @1", owner)
+			owned_by = "owned by ".. owner
 		end
 
 		meta:set_string("owner",  owner)
@@ -474,3 +474,12 @@ minetest.register_node("bloc4builder:circular_saw",  {
 	on_metadata_inventory_put = blocsaw.on_metadata_inventory_put,
 	on_metadata_inventory_take = blocsaw.on_metadata_inventory_take,
 })
+
+minetest.register_craft({
+		output = "bloc4builder:circular_saw",
+		recipe = {
+			{ "",  "default:copper_ingot",  "" },
+			{ "group:stone",  "group:stone",  "group:stone"},
+			{ "group:stone",  "",  "group:stone"},
+		}
+	})

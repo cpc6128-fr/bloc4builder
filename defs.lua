@@ -170,23 +170,7 @@ local box_slope_outer_half_raised = {
 
 bloc4builder.defs = {
 --***
-["box"]={
-    --3/slim _15
-    ["_stairslim"] =
-			{
-      {-0.5, -0.5, -0.5, 0, -0.4375, 0.5},
-      {0, -0.5, 0, 0.5, -0.4375, 0.5},
-      },
-    --middle slim
-		["_midslim"] = {-0.5, -0.5, -0.03125, 0.5, 0.5, 0.03125},
-    --middle demi
-		["_midfat"] = {-0.5, -0.5, -0.25, 0.5, 0.5, 0.25},
-    --t slim
-		["_tslim"] =
-			{
-      {-0.5, -0.5, -0.5, -0.4375, 0.5, 0.5},
-      {-0.4375, -0.5, -0.03125, 0.5, 0.5, 0.03125},
-      },
+["box1"]={
     --colone ronde
     ["_colroundtop"] =
         {
@@ -216,6 +200,30 @@ bloc4builder.defs = {
       {-0.5, -0.5, -0.5, 0.5, -0.375, 0.5},
       {-0.375, -0.375, -0.375, 0.375, -0.25, 0.375},
       },
+    --3/slim _15
+    ["_stairslim"] =
+			{
+      {-0.5, -0.5, -0.5, 0, -0.4375, 0.5},
+      {0, -0.5, 0, 0.5, -0.4375, 0.5},
+      },
+    --middle demi
+		["_midfat"] = {-0.5, -0.5, -0.25, 0.5, 0.5, 0.25},
+    --t fat
+		["_tfat"] =
+      {
+      {-0.5, -0.5, -0.5, 0, 0.5, 0.5},
+      {0, -0.5, -0.25, 0.5, 0.5, 0.25},
+      },
+  },
+["box2"]={
+    --middle slim
+		["_midslim"] = {-0.5, -0.5, -0.03125, 0.5, 0.5, 0.03125},
+    --t slim
+		["_tslim"] =
+			{
+      {-0.5, -0.5, -0.5, -0.4375, 0.5, 0.5},
+      {-0.4375, -0.5, -0.03125, 0.5, 0.5, 0.03125},
+      },
     --t slim
     ["_tslim2"] =
       {
@@ -228,37 +236,34 @@ bloc4builder.defs = {
       {-0.5, -0.5, -0.25, 0.5, 0.5, 0.25},
       {-0.25, -0.5, -0.5, 0.25, 0.5, -0.25},
       },
-    --t fat
-		["_tfat"] =
-      {
-      {-0.5, -0.5, -0.5, 0, 0.5, 0.5},
-      {0, -0.5, -0.25, 0.5, 0.5, 0.25},
-      },
 },
 --***
-["mesh"]={
+["mesh1"]={
     ["_fuse1"] = {
-			mesh = "fuselage_120.obj",
+			mesh = "coin_oblique.obj",
 			collision_box = fuse1_box,
 			selection_box = fuse1_box,
 		},
 		["_fuse2"] = {
-			mesh = "fuselage_121.obj",
+			mesh = "bloc_coin.obj",
 			collision_box = fuse2_box,
 			selection_box = fuse2_box,
 		},
+    ["_arche"] = {
+			mesh = "arc.obj",
+			collision_box = arche_box,
+			selection_box = arche_box,
+		}
+},
+--***
+["mesh2"]={
 		["_fuse3"] = {
-			mesh = "fuselage_122.obj",
+			mesh = "cloison_oblique_demi.obj",
 			collision_box = fuse3_box,
 			selection_box = fuse3_box,
 		},
-		["_arche"] = {
-			mesh = "fuselage_201.obj",
-			collision_box = arche_box,
-			selection_box = arche_box,
-		},
 		["_mid"] = {
-			mesh = "mid.obj",
+			mesh = "cloison_oblique.obj",
 			collision_box = angledglass,
 			selection_box = angledglass,
 		},
@@ -373,12 +378,12 @@ bloc4builder.defs = {
       },
 		},
 		["_fusea"] = {
-			mesh = "fuselage_21.obj",
+			mesh = "arc_cloison.obj",
 			collision_box = arche_box,
 			selection_box = arche_box,
 		},
 		["_fuseb"] = {
-			mesh = "fuselage_22.obj",
+			mesh = "coupole.obj",
 			collision_box = {
         type = "fixed",
         fixed = {
