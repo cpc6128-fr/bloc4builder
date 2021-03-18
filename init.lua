@@ -75,6 +75,7 @@ local items = {
 "hub 1",
 "sas1 1",
 "sas2 1",
+"sas4 1",
 "door 1",
 "door_shop 2",
 "trapdoor_metal 1",

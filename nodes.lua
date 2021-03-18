@@ -2,7 +2,8 @@
 --** bloc4builder ver 2   **
 --** Romand Philippe 2020 **
 --**************************
--- Register nodes
+
+--** SOUND **
 
 local function sound_lift(table)
 	table = table or {}
@@ -13,6 +14,78 @@ local function sound_lift(table)
 	default.node_sound_defaults(table)
 	return table
 end
+
+function bloc4builder.start_sound(pos, soundname)
+	local nod_met = minetest.get_meta(pos)
+	local soundactive = nod_met:get_int("sound")
+
+  if soundname==nil then
+    soundname=nod_met:get_string("sound_name")
+  end
+
+  if soundactive> -1  then
+    minetest.after(0, function(soundactive)
+      minetest.sound_stop(soundactive)
+    end,soundactive)
+    nod_met:set_int("sound", -1)
+    return
+  end
+
+  soundactive = minetest.sound_play(soundname, {
+    pos = pos,
+    max_hear_distance = 15,
+    loop = true
+  })
+  nod_met:set_int("sound", soundactive+1)
+
+end
+
+function bloc4builder.stop_sound(pos)
+	local nod_met = minetest.get_meta(pos)
+	local soundactive = nod_met:get_int("sound")
+
+	if soundactive> -1  then
+    minetest.after(0, function(soundactive)
+      minetest.sound_stop(soundactive)
+    end,soundactive-1)
+    nod_met:set_int("sound", -1)
+    end
+
+end
+
+local colors_assign={
+["dye:white"]=0,
+["dye:red"]=1,
+["dye:green"]=2,
+["dye:blue"]=3,
+["dye:magenta"]=4,
+["dye:orange"]=5,
+["dye:yellow"]=6,
+["dye:black"]=7
+}
+
+function bloc4builder.change_color(pos,node,player)
+  local plname=player:get_player_name()
+
+  if minetest.is_protected(pos, plname) then return end
+
+  local name = player:get_wielded_item():get_name()
+
+  if minetest.registered_items[name].groups.dye ~= nil then
+    local color = colors_assign[name] or 0
+
+    if color ~= false then
+        local node = minetest.get_node(pos)
+        local new_facedir=node.param2 % 32
+        node.param2 = (color*32)+new_facedir
+        minetest.set_node(pos, node)
+--TODO remove itemstack dye:color
+    end
+  end
+
+end
+
+-- Register nodes
 
 minetest.register_node("bloc4builder:floor", {
 	description = "sol industriel",
@@ -183,7 +256,7 @@ minetest.register_node("bloc4builder:light_on", {
     fixed = {-0.5,-0.5,-0.5,0.5,-0.4375,0.5},
 		},
 	groups = {snappy=2,oddly_breakable_by_hand = 2,not_in_creative_inventory=bloc4builder.creative_enable},
-	--sounds = default.node_sound_defaults(),
+	sounds = default.node_sound_defaults(),
   on_place = minetest.rotate_node,
   on_rightclick = function(pos, node, player)
     minetest.swap_node(pos,{name="bloc4builder:light",param2=node.param2})
@@ -299,40 +372,6 @@ minetest.register_node("bloc4builder:army", {
 })
 
 --Other color
-local colors_assign={
-["dye:white"]=0,
-["dye:red"]=1,
-["dye:green"]=2,
-["dye:blue"]=3,
-["dye:magenta"]=4,
-["dye:orange"]=5,
-["dye:yellow"]=6,
-["dye:black"]=7
-}
-
-local function change_color(pos,node,player)
-  local plname=player:get_player_name()
-
-  if minetest.is_protected(pos, plname) then return end
-
-  local name = player:get_wielded_item():get_name()
-
-  if minetest.registered_items[name].groups.dye ~= nil then
-    local color = colors_assign[name] or 0
-
-    if color ~= false then
-        local node = minetest.get_node(pos)
-        local new_facedir=node.param2 % 32
-        --local new_color=((node.param2-new_facedir)/32)+1
-        --if new_color>7 then new_color=0 end
-        --local new_color=color*32
-        node.param2 = (color*32)+new_facedir --(new_color*32)+new_facedir
-        minetest.set_node(pos, node)
---TODO remove itemstack dye:color
-    end
-  end
-
-end
 
 minetest.register_node("bloc4builder:white", {
 	description = "metal white",
@@ -342,7 +381,7 @@ minetest.register_node("bloc4builder:white", {
 	sounds = default.node_sound_metal_defaults(),
   paramtype2 = 'colorfacedir',
   palette="b4b_palette_4.png",
-  on_punch= change_color,
+  on_punch= bloc4builder.change_color,
 })
 
 
@@ -354,7 +393,7 @@ minetest.register_node("bloc4builder:rainbow", {
 	sounds = default.node_sound_metal_defaults(),
   paramtype2 = 'colorfacedir',
   palette="b4b_palette_2.png",
-  on_punch= change_color,
+  on_punch= bloc4builder.change_color,
 })
 
 -- road
@@ -843,8 +882,7 @@ minetest.register_node("bloc4builder:metal_x_connect", {
 	node_box = {
 		type = "connected",
 		fixed = {-0.0625, -0.5, -0.0625, 0.0625, 0.5, 0.0625},
-		connect_front = {--{-0.0625, 0.4375, -0.5, 0.0625, 0.5, -0.0625}, -- av_h
-			--{-0.0625, -0.5, -0.5, 0.0625, -0.4375, -0.0625}, -- av_b
+		connect_front = {
 			{-0.0625, 0.3125, -0.1875, 0.0625, 0.5, -0.0625}, -- av1
 			{-0.0625, 0.1875, -0.3125, 0.0625, 0.375, -0.125}, -- av2
 			{-0.0625, 0.0625, -0.4375, 0.0625, 0.25, -0.25}, -- av3
@@ -853,8 +891,7 @@ minetest.register_node("bloc4builder:metal_x_connect", {
 			{-0.0625, -0.375, -0.3125, 0.0625, -0.1875, -0.125}, -- av6
 			{-0.0625, -0.5, -0.1875, 0.0625, -0.3125, -0.0625}, -- av7
     }, -- z-
-		connect_back = {--{-0.0625, 0.4375, 0.0625, 0.0625, 0.5, 0.5}, -- ar_h
-			--{-0.0625, -0.5, 0.0625, 0.0625, -0.4375, 0.5}, -- ar_b
+		connect_back = {
 			{-0.0625, 0.3125, 0.0625, 0.0625, 0.5, 0.1875}, -- av1
 			{-0.0625, 0.1875, 0.125, 0.0625, 0.375, 0.3125}, -- av2
 			{-0.0625, 0.0625, 0.25, 0.0625, 0.25, 0.4375}, -- av3
@@ -863,8 +900,7 @@ minetest.register_node("bloc4builder:metal_x_connect", {
 			{-0.0625, -0.375, 0.125, 0.0625, -0.1875, 0.3125}, -- av6
 			{-0.0625, -0.5, 0.0625, 0.0625, -0.3125, 0.1875}, -- av7
     }, -- z+
-		connect_left = {--{-0.5, 0.4375, -0.0625, -0.0625, 0.5, 0.0625}, -- l_h
-			--{-0.5, -0.5, -0.0625, -0.0625, -0.4375, 0.0625}, -- l_b
+		connect_left = {
 			{-0.1875, 0.3125, -0.0625,-0.0625, 0.5, 0.0625}, -- r1
 			{-0.3125, 0.1875, -0.0625, -0.125, 0.375, 0.0625}, -- r2
 			{-0.4375, 0.0625, -0.0625, -0.25, 0.25, 0.0625}, -- r3
@@ -873,8 +909,7 @@ minetest.register_node("bloc4builder:metal_x_connect", {
 			{-0.3125, -0.375, -0.0625, -0.125, -0.1875, 0.0625}, -- r6
 			{-0.1875, -0.5, -0.0625, -0.0625, -0.3125, 0.0625}, -- r7
     }, -- x-
-		connect_right = {--{0.0625, 0.4375, -0.0625, 0.5, 0.5, 0.0625}, -- r_h
-			--{0.0625, -0.5, -0.0625, 0.5, -0.4375, 0.0625}, -- r_b
+		connect_right = {
 			{0.0625, 0.3125, -0.0625, 0.1875, 0.5, 0.0625}, -- r1
 			{0.125, 0.1875, -0.0625, 0.3125, 0.375, 0.0625}, -- r2
 			{0.25, 0.0625, -0.0625, 0.4375, 0.25, 0.0625}, -- r3
@@ -997,10 +1032,7 @@ minetest.register_node("bloc4builder:support_metal_i_mid", {
 		node_box = {
 			type = "fixed",
 			fixed = {
-      --{-0.25, -1.5, -0.0625, -0.0625, -0.5, 0.0625}, -- NodeBox1
 			{-0.9375, -1.0625, -0.0625, -0.0625, -0.9375, 0.0625}, -- NodeBox2
-			--{-0.5, -0.75, -0.0625, -0.25, -0.5, 0.0625}, -- NodeBox3
-			--{-0.5, -1.5, -0.0625, -0.25, -1.25, 0.0625}, -- NodeBox4
 			}
 		},
 		selection_box = {
@@ -1055,7 +1087,7 @@ minetest.register_node("bloc4builder:ladder", {
 	},
 	paramtype2 = 'colorfacedir',
   palette="b4b_palette_3.png",
-  on_punch= change_color,
+  on_punch= bloc4builder.change_color,
   drop="bloc4builder:ladder",
 	sounds= default.node_sound_metal_defaults(),
   climbable = true
@@ -1234,152 +1266,6 @@ minetest.register_node("bloc4builder:motif", {
 	groups = {cracky=3, wall = 1,not_in_creative_inventory=bloc4builder.creative_enable},
 	sounds = default.node_sound_metal_defaults(),
 })
-
-local mesewire_rules =
-    {
-    {x = 1, y = 0, z = 0},
-    {x =-1, y = 0, z = 0},
-    {x = 0, y = 1, z = 0},
-    {x = 0, y =-1, z = 0},
-    {x = 0, y = 0, z = 1},
-    {x = 0, y = 0, z =-1},
-    }
-
-local def_on={}
-def_on.description = "girophare"
-def_on.tiles ={"b4b_shiping.png","b4b_shiping.png",
-{image = "b4b_girophare_a_on.png",backface_culling = false,animation = {type = "vertical_frames",aspect_w = 32,aspect_h = 32, length = 0.5},},
-{image = "b4b_girophare_a_on.png",backface_culling = false,animation = {type = "vertical_frames",aspect_w = 32,aspect_h = 32, length = 0.5},},
-{image = "b4b_girophare_b_on.png",backface_culling = false,animation = {type = "vertical_frames",aspect_w = 32,aspect_h = 32, length = 0.5},},
-{image = "b4b_girophare_b_on.png",backface_culling = false,animation = {type = "vertical_frames",aspect_w = 32,aspect_h = 32, length = 0.5},},
-}
-def_on.drawtype = "nodebox"
-def_on.node_box = {
-		type = "fixed",
-		fixed = {
-			{-0.5, -0.49, -0.5, 0.5, 0.49, 0.5},
-		}
-	}
-def_on.use_texture_alpha = true
-def_on.light_source = 10
-
-def_on.sounds = default.node_sound_stone_defaults()
-
-
-local def_off={}
-def_off.description = "girophare"
-def_off.tiles ={"b4b_shiping.png","b4b_shiping.png","b4b_girophare_off.png"}
-def_off.drawtype = "nodebox"
-def_off.node_box = {
-		type = "fixed",
-		fixed = {
-			{-0.5, -0.49, -0.5, 0.5, 0.49, 0.5},
-		}
-	}
-def_off.use_texture_alpha = true
-def_off.sounds = default.node_sound_stone_defaults()
-
---compatible mesecon
-
-if minetest.get_modpath("mesecons") then
-
-def_on.groups = {cracky=3, switch=110, not_in_creative_inventory=1,mesecon_effector_on = 1}
-def_on.mesecons = {effector = {
-		action_off = function (pos, node)
-			minetest.swap_node(pos, {name = "bloc4builder:girophare"})
-		end,
-		rules = mesewire_rules,
-	}}
-def_on.on_blast = mesecon.on_blastnode  
-
-def_off.groups = {cracky=3, switch=110, mesecon_receptor_off = 1, mesecon_effector_off = 1,not_in_creative_inventory=bloc4builder.creative_enable}
-def_off.mesecons = {effector = {
-		action_on = function (pos, node)
-			minetest.swap_node(pos, {name = "bloc4builder:girophare_on"})
-		end,
-		rules = mesewire_rules,
-	}}
-def_off.on_blast = mesecon.on_blastnode
-
-  minetest.register_node("bloc4builder:electro", {
-    description = "circuit electro",
-    drawtype = "nodebox",
-    tiles ={"b4b_cable_angle1.png", "b4b_cable_angle1.png^[transformR90", "b4b_cable_bord1.png", "b4b_cable_bord1.png", "b4b_cable_droit1.png", "b4b_cable_middle1.png"},
-    paramtype2 = "facedir",
-    groups = {cracky=3, wall = 1, flammable=2,not_in_creative_inventory=bloc4builder.creative_enable},
-    sounds = default.node_sound_metal_defaults(),
-    mesecons = {conductor = {
-                    state = "off",
-                    onstate = "bloc4builder:electro_on",
-                    rules = mesewire_rules
-            }},
-  })
-
-minetest.register_node("bloc4builder:electro_on", {
-    description = "circuit electro",
-    drawtype = "nodebox",
-    tiles ={"b4b_cable_angle1.png", "b4b_cable_angle1.png^[transformR90", "b4b_cable_bord1.png", "b4b_cable_bord1.png", "b4b_cable_droit1.png", "b4b_cable_middle1.png"},
-    paramtype2 = "facedir",
-    groups = {cracky=3, wall = 1, flammable=2, not_in_creative_inventory=1},
-    sounds = default.node_sound_metal_defaults(),
-    mesecons = {conductor = {
-                state = "on",
-                offstate = "bloc4builder:electro",
-                rules = mesewire_rules
-            }},
-    })
-
-  minetest.register_node("bloc4builder:electro2", {
-    description = "circuit electro2",
-    drawtype = "nodebox",
-    tiles ={"b4b_porte_maintenance3.png", "b4b_porte_maintenance.png", "b4b_cable_droit1.png^[transformR90", "b4b_cable_droit1.png^[transformR90", "b4b_cable_coffret1.png", "b4b_cable_coffret1.png"},
-    paramtype2 = "facedir",
-    groups = {cracky=3, wall = 1, flammable=2,not_in_creative_inventory=bloc4builder.creative_enable},
-    sounds = default.node_sound_metal_defaults(),
-    mesecons = {conductor = {
-                    state = "off",
-                    onstate = "bloc4builder:electro2_on",
-                    rules = mesewire_rules
-            }},
-  })
-
-  minetest.register_node("bloc4builder:electro2_on", {
-    description = "circuit electro2",
-    drawtype = "nodebox",
-    tiles ={"b4b_porte_maintenance3.png", "b4b_porte_maintenance.png", "b4b_cable_droit1.png^[transformR90", "b4b_cable_droit1.png^[transformR90", "b4b_cable_coffret1.png", "b4b_cable_coffret1.png"},
-    paramtype2 = "facedir",
-    groups = {cracky=3, wall = 1, flammable=2, not_in_creative_inventory=1},
-    sounds = default.node_sound_metal_defaults(),
-    mesecons = {conductor = {
-                state = "on",
-                offstate = "bloc4builder:electro2",
-                rules = mesewire_rules
-            }},
-    })
-
-else
-def_on.groups = {cracky=3,switch=110, not_in_creative_inventory=1}
-def_off.groups = {cracky=3,switch=110,not_in_creative_inventory=bloc4builder.creative_enable}
-
-  minetest.register_node("bloc4builder:electro", {
-    description = "circuit electro",
-    tiles ={"b4b_cable_angle1.png", "b4b_cable_angle1.png^[transformR90", "b4b_cable_bord1.png", "b4b_cable_bord1.png", "b4b_cable_droit1.png", "b4b_cable_middle1.png"},
-    paramtype2 = "facedir",
-    groups = {cracky=3,not_in_creative_inventory=bloc4builder.creative_enable},
-    sounds = default.node_sound_metal_defaults(),
-  })
-
-  minetest.register_node("bloc4builder:electro2", {
-    description = "circuit electro2",
-    tiles ={"b4b_porte_maintenance3.png", "b4b_porte_maintenance.png", "b4b_cable_droit1.png^[transformR90", "b4b_cable_droit1.png^[transformR90", "b4b_cable_coffret1.png", "b4b_cable_coffret1.png"},
-    paramtype2 = "facedir",
-    groups = {cracky=3,not_in_creative_inventory=bloc4builder.creative_enable},
-    sounds = default.node_sound_metal_defaults(),
-  })
-end
-
-minetest.register_node("bloc4builder:girophare_on", def_on)
-minetest.register_node("bloc4builder:girophare", def_off)
 
 minetest.register_node("bloc4builder:astroport_light", {
 	description = "Astroport light",
@@ -1704,7 +1590,6 @@ end
   end
 
   register_fuselage("technic",bloc,option)
-
 
 --[[
 minetest.register_node("bloc4builder:tron_green", {
