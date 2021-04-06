@@ -6,12 +6,11 @@ local chg_form={}
 
 local check_dig=function(pos,player)
   local meta = minetest.get_meta(pos)
-  local channel=meta:get_string("channel")
   local owner=meta:get_string("owner")
   local plname=player:get_player_name()
 
-  --si channel non inititialiser
-  if owner=="" then
+  --si owner non inititialiser
+  if owner=="noplayer" then
     owner=plname
     meta:set_string("owner",plname)
     meta:set_string("code","")
@@ -25,18 +24,24 @@ end
 --interrupteur de commande pour le group switch
 --recherche group switch et modifie le nom
 --[[
-swap_node=changement du node de commande (keypad...)
-switch=type de command 4)Rightclick 3)BP 2)KEYPAD 1)on_switch
-state=0 off / 1 on / 2 flipflop
+Type de commande : 1 IC / 2 Keypad / 3 Bp / 4 Rightclick password / 5 Rightclick 
+swap_node= true/false changement du node de commande (keypad...)
+switch=type de command 4-5)Rightclick 3)BP 2)KEYPAD 1)Ic
+state= 0 off / 1 on / 6 flipflop(bypass on_switch et set_node)
 channel=commande specifique au channel
 
-switch=000000
+
+group switch=000000
 100000 door
-010000 set node or swap node
-001000 command on_switch
-000100 BP/Rightclick
+010000 set_node or swap node
+001000 on_switch
+000100 BP
 000010 KEYPAD
-000001 on_switch
+000001 IC (on_switch)
+
+on_switch prioritaire sur set_node
+set_node prioritaire sur door
+
 --]]
 
 local function change_node(node,nname,npos,state,option,sas,channel,bypass)
@@ -46,79 +51,54 @@ local function change_node(node,nname,npos,state,option,sas,channel,bypass)
   local nod_met = minetest.get_meta(npos)
 	local sound_name = nod_met:get_string("sound_name")
 
-  --rajout d'un bloc invisible pour etancher les portes
-  if sas==true then
-    if state==0 then
-      minetest.set_node({x=npos.x,y=npos.y+1,z=npos.z},{name="bloc4builder:hidden"})
-    elseif state==1 then
-      minetest.remove_node({x = npos.x, y = npos.y + 1, z = npos.z})
-    elseif state==2 then
-      if string.find(nname,"_on") then
-        minetest.set_node({x=npos.x,y=npos.y+1,z=npos.z},{name="bloc4builder:hidden"})
-      else
-        minetest.remove_node({x = npos.x, y = npos.y + 1, z = npos.z})
+  --on_switch
+  if option==4 or option==5 then
+    local dst_chan=nod_met:get_string("channel")
+
+    if channel==nil then channel="No channel" end
+
+    if dst_chan=="" then dst_chan="No channel" end
+
+    if channel==dst_chan or bypass then
+      if minetest.registered_nodes[nname].on_switch then
+        minetest.registered_nodes[nname].on_switch(npos,node,state)
       end
     end
-  end
 
-  --off
-  if state==0 then
-    --option swap off
-    if option==0 and string.find(nname,"_on")~=nil then
+    return
+
+  --set_node
+  elseif option==2 or option==3 then
+
+    if state==0 and string.find(nname,"_on")~=nil then
+      nname=string.gsub(nname,"_on","")
+      minetest.set_node(npos, {name=nname,param2=node.param2})
+    elseif state==1 and string.find(nname,"_on")==nil then
+      nname=nname.."_on"
+      minetest.set_node(npos, {name=nname,param2=node.param2})
+    end
+
+    return
+
+  --swap_node
+  elseif option<2 then
+    if state==0 and string.find(nname,"_on")~=nil then
 
       if sound_name~="" then bloc4builder.stop_sound(npos) end
 
       nname=string.gsub(nname,"_on","")
       minetest.swap_node(npos, {name=nname,param2=node.param2})
 
-    --option set off
-    elseif option==2 and string.find(nname,"_on")~=nil then
-      nname=string.gsub(nname,"_on","")
-      minetest.set_node(npos, {name=nname,param2=node.param2})
-
-    elseif option==4 then
-      local dst_chan=nod_met:get_string("channel")
-
-      if channel==nil then channel="No channel" end
-
-      if dst_chan=="" then dst_chan="No channel" end
-
-      if channel==dst_chan or bypass then
-        if minetest.registered_nodes[nname].on_switch then
-          minetest.registered_nodes[nname].on_switch(npos,node)
-        end
-      end
-    end
-
-  --on
-  elseif state==1 then
-    --option swap on
-    if  option==1 and string.find(nname,"_on")==nil then
+    elseif state==1 and string.find(nname,"_on")==nil then
       nname=nname.."_on"
       minetest.swap_node(npos, {name=nname,param2=node.param2})
 
       if sound_name~="" then bloc4builder.start_sound(npos) end
 
-    --option set on
-    elseif  option==3 and string.find(nname,"_on")==nil then
-      nname=nname.."_on"
-      minetest.set_node(npos, {name=nname,param2=node.param2})
-
-    elseif option==5 then
-      local dst_chan=nod_met:get_string("channel")
-
-      if channel==nil then channel="No channel" end
-
-      if dst_chan=="" then dst_chan="No channel" end
-
-      if channel==dst_chan or bypass then
-        if minetest.registered_nodes[nname].on_switch then
-          minetest.registered_nodes[nname].on_switch(npos,node)
-        end
-      end
     end
-  --option flipflop
-  elseif  state==2 then
+
+  --flipflop du node
+  elseif  state>5 then
     if string.find(nname,"_on") then
       nname=string.gsub(nname,"_on","")
       minetest.swap_node(npos, {name=nname,param2=node.param2})
@@ -128,46 +108,20 @@ local function change_node(node,nname,npos,state,option,sas,channel,bypass)
     end
   end
 
-end
-
---********
---** IC **
---********
-function bloc4builder.change_switch(pos,src_chan,found,radius)
-
-  if radius==nil then radius={x=5,y=5,z=5} end
-
-  if type(radius)~="table" then
-    local tmp=radius
-    radius=nil
-    radius={x=tmp,y=tmp,z=tmp}
-  end
-
-    if found == nil then
-      found=minetest.find_nodes_in_area({x=pos.x-radius.x,y=pos.y-radius.y,z=pos.z-radius.z},{x=pos.x+radius.x,y=pos.y+radius.y,z=pos.z+radius.z},{"group:switch"})
-    end
-
-    if found then
-      for i=1,#found do
-        local node_switch=minetest.get_node(found[i])
-        local nodename=node_switch.name
-        local group=tonumber(minetest.get_item_group(nodename,"switch")) % 2
-
-        if group==1 then
-          local nod_met=minetest.get_meta(found[i])
-          local dst_chan=nod_met:get_string("channel")
-
-          if dst_chan=="" then dst_chan="No channel" end
-
-          if src_chan==dst_chan then
-            if minetest.registered_nodes[nodename].on_switch then
-              minetest.registered_nodes[nodename].on_switch(found[i],node_switch)
-            end
-          end
-        end
-        
+--rajout d'un bloc invisible pour etancher les portes
+  if sas==true then
+    if state==0 then
+      minetest.set_node({x=npos.x,y=npos.y+1,z=npos.z},{name="bloc4builder:hidden"})
+    elseif state==1 then
+      minetest.remove_node({x = npos.x, y = npos.y + 1, z = npos.z})
+    elseif state>5 then
+      if string.find(nname,"_on") then
+        minetest.set_node({x=npos.x,y=npos.y+1,z=npos.z},{name="bloc4builder:hidden"})
+      else
+        minetest.remove_node({x = npos.x, y = npos.y + 1, z = npos.z})
       end
     end
+  end
 
 end
 
@@ -181,10 +135,10 @@ bloc4builder.switch_on=function(pos,swap,switch,state,radius,channel)
   if radius==nil then radius=2 end
 
   if swap==true then
-    if state==0 and string.find(node.name,"_on") then
+    if state==0 and string.find(node.name,"_on")~=nil then
       local new_node=string.gsub(node.name,"_on","")
       minetest.swap_node(pos, {name=new_node,param2=node.param2})
-    else
+    elseif state==1 and string.find(node.name,"_on")==nil then
       local new_node=node.name .."_on"
       minetest.swap_node(pos, {name=new_node,param2=node.param2})
     end
@@ -237,7 +191,7 @@ bloc4builder.switch_on=function(pos,swap,switch,state,radius,channel)
         --keypad
         if math.floor(group_switch/10)==1 then
           if switch==2 then
-            --bypass on_switch
+            --bypass channel on_switch
             change_node(node_dst,nname,node_pos[idx_node],state,state+option,sas,"No channel",true)
             group_switch=10
           end
@@ -252,9 +206,8 @@ bloc4builder.switch_on=function(pos,swap,switch,state,radius,channel)
         end
 
         --Rightclick
-        if switch==0 then
-          if on_switch then option=4 end
-          change_node(node_dst,nname,node_pos[idx_node],state,state+option,sas,channel)
+        if switch>3 then
+          change_node(node_dst,nname,node_pos[idx_node],state,state+option,sas,channel,true)
         end
 
       end
@@ -262,7 +215,17 @@ bloc4builder.switch_on=function(pos,swap,switch,state,radius,channel)
       if group_door>0 then
         local level=minetest.get_item_group(nname, "level")
         if level==0 then
-          doors.door_toggle(node_pos[idx_node], node_dst, nil)
+          if string.find(node_dst.name,"trap") then
+            doors.trapdoor_toggle(node_pos[idx_node], node_dst, nil)
+          else
+            --MT 5.4
+            local def = minetest.registered_nodes[node_dst.name]
+            if def.door then
+              doors.door_toggle(node_pos[idx_node], node_dst, nil)
+            end
+            --MT 5.1
+            --doors.door_toggle(node_pos[idx_node], node_dst, nil)
+          end
         end
       end
 
@@ -289,7 +252,7 @@ local function password_check(pos,node,player,swap,switch,state,sound,time)
 
   else
     --si owner non initialiser
-    if owner=="" then
+    if owner=="noplayer" then
       owner=plname
       meta:set_string("owner",plname)
       meta:set_string("code","")
@@ -303,19 +266,25 @@ local function password_check(pos,node,player,swap,switch,state,sound,time)
 
   --player est owner
   if plname==owner then
+
     --parametrage avec le spacengine tool
     if tool == "spacengine:tool" then
       chg_form[plname].pos=position
       chg_form[plname].swap=swap
       chg_form[plname].switch=switch
       chg_form[plname].state=state
-      if switch>3 then
+      if switch==5 then
         chg_form[plname].fs_type="channel"
         return minetest.show_formspec(plname, "switch_" , "size[8, 4]button_exit[2,3;2,1;submit;submit]field[1,1;3,1;channel;channel;".. meta:get_string("channel") .."]")
+      elseif switch==4 then
+        chg_form[plname].fs_type="channel"
+        return minetest.show_formspec(plname, "switch_" , "size[8, 4]button_exit[2,3;2,1;submit;submit]field[1,1;3,1;channel;code;".. meta:get_string("channel") .."]")
       else
         chg_form[plname].fs_type="setup"
         return minetest.show_formspec(plname, "switch_", "size[8, 4]label[0, 0;PASSWORD]field[1,1;5,1;oldcode;oldcode;".. code .."]field[1,2;5,1;newcode;newcode;".. code .."]button_exit[2,3;2,1;submit;submit]field[1,4;3,1;channel;;".. channel .."]")
       end
+
+    --owner action
     else
 
       if sound~="" then
@@ -324,18 +293,15 @@ local function password_check(pos,node,player,swap,switch,state,sound,time)
 
       --option special Rightclick
       if switch>3 then
-        bloc4builder.switch_on(pos,swap,0,2,0,code)
+
+        bloc4builder.switch_on(pos,swap,switch,state,0,code)
 
         if time then minetest.get_node_timer(pos):start(time) end
 
-      elseif switch==1 then
-        bloc4builder.switch_on(pos,swap,switch,state,6)
       elseif switch==2 then
         bloc4builder.switch_on(pos,swap,switch,state,2,code)
-      elseif switch==3 then
-        bloc4builder.switch_on(pos,swap,switch,state)
-        return
       end
+
     end
 
   --player n'est pas owner
@@ -360,11 +326,14 @@ local function password_check(pos,node,player,swap,switch,state,sound,time)
       end
 
       --option special Rightclick
-      if switch==4 then
-        bloc4builder.switch_on(pos,swap,0,2,0,code)
+      if switch>3 then
+
+        bloc4builder.switch_on(pos,swap,switch,state,0,code)
 
         if time then minetest.get_node_timer(pos):start(time) end
 
+      elseif switch==2 then
+        bloc4builder.switch_on(pos,swap,switch,state,2,code)
       end
 
     end
@@ -385,7 +354,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
     if fields.oldcode==nil then fields.oldcode="" end
 
     if chg_form[plname].fs_type=="setup" then
-      if fields.submit then
+      if fields.submit or fields.key_enter_field then
 
         if fields.channel=="" then fields.channel="No channel" end
 
@@ -422,7 +391,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
     end
 
     if chg_form[plname].fs_type=="channel" then
-      if fields.submit then
+      if fields.submit or fields.key_enter_field then
 
         if fields.channel=="" then fields.channel="No channel" end
 
@@ -584,9 +553,9 @@ minetest.register_node("bloc4builder:hidden", {
 --***********
 --** sas 1 **
 --***********
---porte simple sans code, a fermeture automatique, commander par IC,KEYPAD,Rightclick
+--porte simple sans code, a fermeture automatique, commander par IC,Rightclick
 minetest.register_node("bloc4builder:sas1", {
-  groups = {cracky=3,switch=101001,not_in_creative_inventory=bloc4builder.creative_enable},
+  groups = {cracky=3,switch=1001,not_in_creative_inventory=bloc4builder.creative_enable},
 	description = "SAS 1",
   inventory_image = "b4b_sas1_inv.png",
   drawtype = "mesh",
@@ -609,7 +578,7 @@ minetest.register_node("bloc4builder:sas1", {
     minetest.set_node({x=pos.x,y=pos.y+1,z=pos.z}, {name="bloc4builder:hidden",param2=node.param2})
   end,
   on_rightclick = function(pos, node,player)
-    password_check(pos,node,player,false,5,4,"sas1_open",3)
+    password_check(pos,node,player,false,5,1,"",3)
   end,
   on_switch = function(pos, node)
     minetest.swap_node(pos, {name="bloc4builder:sas1_on",param2=node.param2})
@@ -628,7 +597,7 @@ minetest.register_node("bloc4builder:sas1", {
 })
 
 minetest.register_node("bloc4builder:sas1_on", {
-  groups = {cracky=3,switch=101001,not_in_creative_inventory=1},
+  groups = {cracky=3,switch=1001,not_in_creative_inventory=1},
 	tiles = {{ name = "b4b_sas1.png", backface_culling = true }},
 	drop = 'bloc4builder:sas1',
 	drawtype = "mesh",
@@ -647,7 +616,7 @@ minetest.register_node("bloc4builder:sas1_on", {
   end,
   on_rightclick = function(pos, node,player)
     minetest.get_node_timer(pos):stop()
-    password_check(pos,node,player,false,5,4,"")
+    password_check(pos,node,player,false,5,0,"")
   end,
   on_switch = function(pos, node)
     minetest.get_node_timer(pos):stop()
@@ -692,7 +661,7 @@ minetest.register_node("bloc4builder:sas2", {
     meta:set_string("code", "")
   end,
   on_rightclick = function(pos, node, player)
-    password_check(pos,node,player,false,4,2,"sas2_open")
+    password_check(pos,node,player,false,4,1,"sas2_open")
   end,
   can_dig = check_dig,--function(pos,player)
     --if check_dig(pos,player) then return true end
@@ -732,7 +701,7 @@ minetest.register_node("bloc4builder:sas2_on", {
   end,
 
   on_rightclick = function(pos, node, player)
-    password_check(pos,node,player,false,4,2,"sas2_open")
+    password_check(pos,node,player,false,4,0,"sas2_open")
   end,
   can_dig = check_dig,--function(pos,player)
     --if check_dig(pos,player) then return true end
@@ -811,7 +780,7 @@ minetest.register_node("bloc4builder:sas4", {
   inventory_image = "b4b_sas4_inv.png",
   drawtype = "mesh",
   mesh = "door_1.obj",
-	tiles = {{ name = "b4b_sas4.png", backface_culling = true }},
+	tiles = {{ name = "b4b_sas5.png", backface_culling = true }},
 	paramtype = "light",
 	paramtype2 = "colorfacedir",
 	sunlight_propagates = true,
@@ -829,7 +798,7 @@ minetest.register_node("bloc4builder:sas4", {
     minetest.set_node({x=pos.x,y=pos.y+1,z=pos.z}, {name="bloc4builder:hidden",param2=node.param2})
   end,
   on_rightclick = function(pos, node, player)
-    password_check(pos,node,player,false,5,4,"sas3_open")
+    password_check(pos,node,player,false,5,1,"")
   end,
   on_switch = function(pos, node)
     minetest.swap_node(pos, {name="bloc4builder:sas4_on",param2=node.param2})
@@ -844,13 +813,13 @@ minetest.register_node("bloc4builder:sas4", {
   on_rotate = function(pos, node, user, mode, new_param2)
 		return false
   end,
-  palette="b4b_palette_3.png",
+  palette="b4b_palette_1.png",
   on_punch= bloc4builder.change_color,
 })
 
 minetest.register_node("bloc4builder:sas4_on", {
 	groups = {cracky=3,switch=101111,not_in_creative_inventory=1},
-	tiles = {{ name = "b4b_sas4.png", backface_culling = true }},
+	tiles = {{ name = "b4b_sas5.png", backface_culling = true }},
 	drop = 'bloc4builder:sas4',
 	drawtype = "mesh",
 	paramtype = "light",
@@ -864,7 +833,7 @@ minetest.register_node("bloc4builder:sas4_on", {
 	mesh = "door_1_open.obj",
 	sounds = default.node_sound_stone_defaults(),
   on_rightclick = function(pos, node,player)
-    password_check(pos,node,player,false,5,4,"sas3_open")
+    password_check(pos,node,player,false,5,0,"")
   end,
   on_switch = function(pos, node)
     minetest.swap_node(pos, {name="bloc4builder:sas4",param2=node.param2})
@@ -872,7 +841,7 @@ minetest.register_node("bloc4builder:sas4_on", {
     minetest.sound_play("sas3_open", {pos = pos, gain = 1.5,
 			max_hear_distance = 4})
   end,
-  palette="b4b_palette_3.png",
+  palette="b4b_palette_1.png",
 })
 
 --*********************
@@ -880,9 +849,6 @@ minetest.register_node("bloc4builder:sas4_on", {
 --*********************
 --porte simple ou double, sans code commander par KEYPAD,IC,Rightclick
 local function open_door_shop(pos)
-  minetest.sound_play("door_shop", {pos = pos, gain = 0.8,
-    max_hear_distance = 4})
-
   local found_door=minetest.find_node_near(pos,1,"bloc4builder:door_shop")
   if found_door then
     local other_node=minetest.get_node(found_door)
@@ -892,9 +858,6 @@ local function open_door_shop(pos)
 end
 
 local function closed_door_shop(pos)
-  minetest.sound_play("door_shop", {pos = pos, gain = 0.8,
-    max_hear_distance = 4})
-
   local found_door=minetest.find_node_near(pos,1,"bloc4builder:door_shop_on")
   if found_door then
     local other_node=minetest.get_node(found_door)
@@ -927,7 +890,8 @@ minetest.register_node("bloc4builder:door_shop", {
     minetest.set_node({x=pos.x,y=pos.y+1,z=pos.z},{name="bloc4builder:hidden"})
   end,
   on_rightclick = function(pos, node, player)
-
+    password_check(pos,node,player,false,5,1,"")
+--[[
     local plname=player:get_player_name()
 
     if player:get_wielded_item():get_name()=="spacengine:tool" then
@@ -942,10 +906,19 @@ minetest.register_node("bloc4builder:door_shop", {
       minetest.swap_node(pos, {name="bloc4builder:door_shop_on",param2=node.param2})
       open_door_shop(pos)
     end
+--]]
   end,
-  on_switch = function(pos, node)
-    minetest.remove_node({x = pos.x, y = pos.y + 1, z = pos.z})
-    minetest.swap_node(pos, {name="bloc4builder:door_shop_on",param2=node.param2})
+  on_switch = function(pos, node, state)
+    if state>0 and node.name=="bloc4builder:door_shop" then
+      minetest.sound_play("door_shop", {pos = pos, gain = 0.8,
+    max_hear_distance = 4})
+
+      minetest.remove_node({x = pos.x, y = pos.y + 1, z = pos.z})
+      minetest.swap_node(pos, {name="bloc4builder:door_shop_on",param2=node.param2})
+    end
+    if state~=6 then
+      open_door_shop(pos)
+    end
   end,
   mesecons = {effector = {
     action_on = function(pos, node)
@@ -975,15 +948,26 @@ minetest.register_node("bloc4builder:door_shop_on", {
 	selection_box = { type = "fixed", fixed = { -1/2,-1/2,-1/16,1/2,3/2,1/16} },
 	mesh = "door_c_open.obj",
 	sounds = default.node_sound_stone_defaults(),
-  on_rightclick = function(pos, node)
+  on_rightclick = function(pos, node,player)
+    password_check(pos,node,player,false,5,0,"")
+--[[
     minetest.set_node({x=pos.x,y=pos.y+1,z=pos.z},{name="bloc4builder:hidden"})
     minetest.swap_node(pos, {name="bloc4builder:door_shop",param2=node.param2})
     closed_door_shop(pos)
-
+--]]
   end,
-  on_switch = function(pos, node)
-    minetest.set_node({x=pos.x,y=pos.y+1,z=pos.z},{name="bloc4builder:hidden"})
-    minetest.swap_node(pos, {name="bloc4builder:door_shop",param2=node.param2})
+  on_switch = function(pos, node, state)
+
+    if state~=1 and node.name=="bloc4builder:door_shop_on" then
+      minetest.sound_play("door_shop", {pos = pos, gain = 0.8,
+    max_hear_distance = 4})
+
+      minetest.set_node({x=pos.x,y=pos.y+1,z=pos.z},{name="bloc4builder:hidden"})
+      minetest.swap_node(pos, {name="bloc4builder:door_shop",param2=node.param2})
+    end
+    if state~=6 then
+      closed_door_shop(pos)
+    end
   end,
   mesecons = {effector = {
     action_off = function(pos, node)
@@ -1404,9 +1388,9 @@ minetest.register_craftitem('bloc4builder:remote_ctrl', {
       if plname==own_dst or own_dst=="noplayer" then
         if dst_met:get_string("code")==code then
           if dst.name=="bloc4builder:keypad" then
-            bloc4builder.switch_on(list_node[i],"bloc4builder:keypad_on",2,1)
+            bloc4builder.switch_on(list_node[i],true,2,1)
           else
-            bloc4builder.switch_on(list_node[i],"bloc4builder:keypad",2,0)
+            bloc4builder.switch_on(list_node[i],true,2,0)
           end
         end
       end
@@ -1450,10 +1434,52 @@ minetest.register_craft({
   }
 })
 
---**************
---** Automate **
---**************
---command mesecon to switch
+--*****************
+--** Automatisme **
+--*****************
+
+--*******************
+--** search switch **
+--*******************
+function bloc4builder.change_switch(pos,src_chan,found,state,radius)
+
+  if radius==nil then radius={x=5,y=5,z=5} end
+
+  if type(radius)~="table" then
+    local tmp=radius
+    radius=nil
+    radius={x=tmp,y=tmp,z=tmp}
+  end
+
+    if found == nil then
+      found=minetest.find_nodes_in_area({x=pos.x-radius.x,y=pos.y-radius.y,z=pos.z-radius.z},{x=pos.x+radius.x,y=pos.y+radius.y,z=pos.z+radius.z},{"group:switch"})
+    end
+
+    if found then
+      for i=1,#found do
+        local node_switch=minetest.get_node(found[i])
+        local nodename=node_switch.name
+        local group=tonumber(minetest.get_item_group(nodename,"switch")) % 2
+
+        if group==1 then
+          local nod_met=minetest.get_meta(found[i])
+          local dst_chan=nod_met:get_string("channel")
+
+          if dst_chan=="" then dst_chan="No channel" end
+
+          if src_chan==dst_chan then
+            if minetest.registered_nodes[nodename].on_switch then
+              minetest.registered_nodes[nodename].on_switch(found[i],node_switch,state)
+            end
+          end
+        end
+        
+      end
+    end
+
+end
+
+--mesecon to switch
 local function ic_fields(pos,fields,sender)
   local name=sender:get_player_name()
   local meta = minetest.get_meta(pos)
@@ -1492,22 +1518,23 @@ local function ic_fields(pos,fields,sender)
       image=image.."b4b_ic_up_down.png;ic;all]"
     end
 
-  if fields.submit then
+  if fields.submit or fields.key_enter_field then
     local new_node=minetest.get_node(pos)
     if fields.ic=="up" then
-      minetest.swap_node(pos, {name="bloc4builder:ic",param2=new_node.param2})
+      minetest.swap_node(pos, {name="bloc4builder:mesecons2switch",param2=new_node.param2})
     else
-      minetest.swap_node(pos, {name="bloc4builder:ic_mese",param2=new_node.param2})
+      minetest.swap_node(pos, {name="bloc4builder:mesecons2switch_all",param2=new_node.param2})
     end
     meta:set_string("channel",fields.channel)
     meta:set_string("formspec","size[8, 5]button_exit[2,4;2,1;submit;submit]field[1,1;3,1;channel;channel;".. fields.channel .."]field[1,2.5;1.5,1;radius;radius;".. radius .."]"..image)
   end
 end
 
---basic operation
 
-minetest.register_node("bloc4builder:ic", {
-	description = "IC switch",
+--front montant
+
+minetest.register_node("bloc4builder:mesecons2switch", {
+	description = "IC mesecons to switch",
 	tiles = {
 		"b4b_ic.png"
 	},
@@ -1541,7 +1568,7 @@ minetest.register_node("bloc4builder:ic", {
     local radius=tonumber(meta:get_string("radius"))
     if radius==0 then radius=5 end
 
-    bloc4builder.change_switch(pos,src_chan,nil,{x=radius,y=radius,z=radius})
+    bloc4builder.change_switch(pos,src_chan,nil,6,{x=radius,y=radius,z=radius})
 	end,
 
   mesecons = {effector = {
@@ -1552,16 +1579,16 @@ minetest.register_node("bloc4builder:ic", {
       local radius=tonumber(meta:get_string("radius"))
       if radius==0 then radius=5 end
 
-      bloc4builder.change_switch(pos,src_chan,nil,{x=radius,y=radius,z=radius})
+      bloc4builder.change_switch(pos,src_chan,nil,6,{x=radius,y=radius,z=radius})
     end
   }},
   sounds = default.node_sound_glass_defaults(),
   on_place = minetest.rotate_node,
 })
 
---mesecon off
+--front montant et descendant - off
 
-minetest.register_node("bloc4builder:ic_mese", {
+minetest.register_node("bloc4builder:mesecons2switch_all", {
 	tiles = {
 		"b4b_ic_mese.png"
 	},
@@ -1580,35 +1607,35 @@ node_box = {
     ic_fields(pos,fields,sender)
   end,
   on_punch = function(pos,node, player)
-    minetest.swap_node(pos, {name="bloc4builder:ic_mese_on",param2=node.param2})
+    minetest.swap_node(pos, {name="bloc4builder:mesecons2switch_all_on",param2=node.param2})
     local meta = minetest.get_meta(pos)
     local src_chan=meta:get_string("channel")
 
     local radius=tonumber(meta:get_string("radius"))
     if radius==0 then radius=5 end
 
-    bloc4builder.change_switch(pos,src_chan,nil,{x=radius,y=radius,z=radius})
+    bloc4builder.change_switch(pos,src_chan,nil,1,{x=radius,y=radius,z=radius})
 	end,
 
   mesecons = {effector = {
     action_on = function (pos, node)
-      minetest.swap_node(pos, {name="bloc4builder:ic_mese_on",param2=node.param2})
+      minetest.swap_node(pos, {name="bloc4builder:mesecons2switch_all_on",param2=node.param2})
       local meta = minetest.get_meta(pos)
       local src_chan=meta:get_string("channel")
 
       local radius=tonumber(meta:get_string("radius"))
       if radius==0 then radius=5 end
 
-      bloc4builder.change_switch(pos,src_chan,nil,{x=radius,y=radius,z=radius})
+      bloc4builder.change_switch(pos,src_chan,nil,1,{x=radius,y=radius,z=radius})
     end
   }},
-  drop="bloc4builder:ic",
+  drop="bloc4builder:mesecons2switch",
 	sounds = default.node_sound_glass_defaults()
 })
 
---mesecon on
+--front montant et descendant - on
 
-minetest.register_node("bloc4builder:ic_mese_on", {
+minetest.register_node("bloc4builder:mesecons2switch_all_on", {
 	tiles = {
 		"b4b_ic_mese_on.png"
 	},
@@ -1627,28 +1654,28 @@ node_box = {
     ic_fields(pos,fields,sender)
   end,
   on_punch = function(pos,node, player)
-    minetest.swap_node(pos, {name="bloc4builder:ic_mese",param2=node.param2})
+    minetest.swap_node(pos, {name="bloc4builder:mesecons2switch_all",param2=node.param2})
     local meta = minetest.get_meta(pos)
     local src_chan=meta:get_string("channel")
 
     local radius=tonumber(meta:get_string("radius"))
     if radius==0 then radius=5 end
 
-    bloc4builder.change_switch(pos,src_chan,nil,{x=radius,y=radius,z=radius})
+    bloc4builder.change_switch(pos,src_chan,nil,0,{x=radius,y=radius,z=radius})
 	end,
 
   mesecons = {effector = {
     action_off = function (pos, node)
-      minetest.swap_node(pos, {name="bloc4builder:ic_mese",param2=node.param2})
+      minetest.swap_node(pos, {name="bloc4builder:mesecons2switch_all",param2=node.param2})
       local meta = minetest.get_meta(pos)
       local src_chan=meta:get_string("channel")
 
       local radius=tonumber(meta:get_string("radius"))
       if radius==0 then radius=5 end
 
-      bloc4builder.change_switch(pos,src_chan,nil,{x=radius,y=radius,z=radius})
+      bloc4builder.change_switch(pos,src_chan,nil,0,{x=radius,y=radius,z=radius})
     end
   }},
-  drop="bloc4builder:ic",
+  drop="bloc4builder:mesecons2switch",
 	sounds = default.node_sound_glass_defaults()
 })

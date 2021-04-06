@@ -10,7 +10,7 @@ local change_formspec=function(pos,fields,sender)
 
   if fields.channel==nil then fields.channel="No channel" end
 
-  if fields.submit then
+  if fields.submit or fields.key_enter_field then
     meta:set_string("channel",fields.channel)
     meta:set_string("formspec","size[8, 4]button_exit[2,3;2,1;submit;submit]field[1,1;3,1;channel;channel;".. fields.channel .."]")
   end
@@ -486,11 +486,13 @@ if minetest.get_modpath("mesecons") then
     on_receive_fields = function(pos,formname,fields,sender)
       change_formspec(pos,fields,sender)
     end,
-    on_switch=function(pos,node)
-      if(mesecon.flipstate(pos, node) == "on") then
-        mesecon.receptor_on(pos)
-      else
-        mesecon.receptor_off(pos)
+    on_switch=function(pos,node,state)
+      if state~=0 then
+        if(mesecon.flipstate(pos, node) == "on") then
+          mesecon.receptor_on(pos)
+        else
+          mesecon.receptor_off(pos)
+        end
       end
     end,
     sounds = default.node_sound_glass_defaults(),
@@ -526,11 +528,13 @@ if minetest.get_modpath("mesecons") then
     on_receive_fields = function(pos,formname,fields,sender)
       change_formspec(pos,fields,sender)
     end,
-    on_switch=function(pos,node)
-      if(mesecon.flipstate(pos, node) == "on") then
-        mesecon.receptor_on(pos)
-      else
-        mesecon.receptor_off(pos)
+    on_switch=function(pos,node,state)
+      if state~=1 then
+        if(mesecon.flipstate(pos, node) == "on") then
+          mesecon.receptor_on(pos)
+        else
+          mesecon.receptor_off(pos)
+        end
       end
     end,
     sounds = default.node_sound_glass_defaults(),
@@ -544,7 +548,7 @@ if minetest.get_modpath("mesecons") then
     output = "bloc4builder:switch2mesecons_off",
     recipe = {
         {"", "default:gold_ingot", ""},
-        {"", "bloc4builder:ic", ""},
+        {"", "bloc4builder:mesecons2switch", ""},
         {"", "group:mesecon_conductor_craftable", ""}
     }
 })

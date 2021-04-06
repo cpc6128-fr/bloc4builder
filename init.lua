@@ -91,7 +91,7 @@ local items = {
 "guardrail_glass_angle 12",
 "girophare 1",
 "astroport_light 10",
-"ic 2",
+"mesecons2switch 2",
 "tricolor_1 4",
 "rail_signal_flag 2",
 "rail_signal 2",
@@ -191,4 +191,4 @@ minetest.register_craft({
 end
 
 --replace old node
-dofile(minetest.get_modpath("bloc4builder") .. "/patch.lua")
+--dofile(minetest.get_modpath("bloc4builder") .. "/patch.lua")

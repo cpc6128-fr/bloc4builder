@@ -542,7 +542,7 @@ if minetest.get_modpath("spacengine") then
       spacengine.placer_node(pos,placer)
     end,
     on_rightclick = function(pos, node, player, itemstack, pointed_thing)
-      spacengine.rightclick(pos,node,player,"power",false)
+      spacengine.rightclick(pos,node,player,true)
     end,
     can_dig=spacengine.can_dig,
    })
