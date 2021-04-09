@@ -345,7 +345,7 @@ on_switch=function(pos,node)
   bloc4builder.stop_sound(pos)
 end,
 on_receive_fields = function(pos,formname,fields,sender)
-  bloc4builder.change_formspec(pos,fields,sender)
+  change_formspec(pos,fields,sender)
 end,
 on_destruct=function(pos)
   minetest.swap_node(pos, {name = "bloc4builder:girophare"})
